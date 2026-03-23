@@ -1,0 +1,7 @@
+id=mircog_installer
+name=Mircog Installer
+version=1.0
+versionCode=1
+author=Kitty (t.me/Kittey)
+description=This Module installs MircoG to your GSI
+updateJson=https://your-download-link-here/update.json
