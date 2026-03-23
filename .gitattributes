@@ -4,3 +4,4 @@
 *.sh filter=lfs diff=lfs merge=lfs -text
 *.prop filter=lfs diff=lfs merge=lfs -text
 *.apk filter=lfs diff=lfs merge=lfs -text
+*.png filter=lfs diff=lfs merge=lfs -text
