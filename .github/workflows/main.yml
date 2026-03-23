@@ -1,0 +1,38 @@
+name: Makefile CI
+
+on:
+  push:
+    branches: [ "main" ]
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Release Version (e.g. 1.0.0)'
+        required: true
+        default: 'manual-build'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write # Essential for creating releases
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: sudo apt-get update && sudo apt-get install -y zip
+
+      - name: Build Module
+        run: make all
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          # Uses the tag if pushed, otherwise uses your manual input
+          tag_name: ${{ github.ref_type == 'tag' && github.ref_name || inputs.version }}
+          files: "*.zip"
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
