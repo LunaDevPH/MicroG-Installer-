@@ -5,3 +5,4 @@
 *.prop filter=lfs diff=lfs merge=lfs -text
 *.apk filter=lfs diff=lfs merge=lfs -text
 *.png filter=lfs diff=lfs merge=lfs -text
+/Makefile filter=lfs diff=lfs merge=lfs -text
