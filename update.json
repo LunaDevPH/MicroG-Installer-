@@ -1,6 +1,6 @@
 {
-  "version": "1.0.1",
+  "version": "v1.0.2",
   "versionCode": 2,
-  "zipUrl": "https://github.com/LunaDevPH/MicroG-Installer-/releases/download/v1.0.1/MicroG-Installer-v1.0.1.zip",
-  "changelog": "null"
+  "zipUrl": "https://github.com/LunaDevPH/MicroG-Installer-/releases/download/v1.0.2/MicroG-Installer.zip",
+  "changelog": "https://raw.githubusercontent.com/LunaDevPH/MicroG-Installer-/main/README.md"
 }
