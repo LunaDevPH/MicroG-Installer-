@@ -1,13 +1,1 @@
-version https://git-lfs.github.com/spec/v1
-oid sha256:fefdb443681915469ef26bf97f6e79fcedbd5ff81e271f6948a222dd387ac6f2
-size 164
-/LICENSE filter=lfs diff=lfs merge=lfs -text
-*.md filter=lfs diff=lfs merge=lfs -text
-*.json filter=lfs diff=lfs merge=lfs -text
-*.sh filter=lfs diff=lfs merge=lfs -text
-*.prop filter=lfs diff=lfs merge=lfs -text
-*.apk filter=lfs diff=lfs merge=lfs -text
 *.png filter=lfs diff=lfs merge=lfs -text
-/Makefile filter=lfs diff=lfs merge=lfs -text
-*.yml filter=lfs diff=lfs merge=lfs -text
-*.xml filter=lfs diff=lfs merge=lfs -text
