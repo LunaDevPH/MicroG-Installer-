@@ -1,4 +1,4 @@
-name: Makefile CI
+name: Run Build And Package Release
 
 on:
   push:
@@ -15,37 +15,59 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 0
+          fetch-depth: 2 # Required to compare current commit with the previous one
 
-      - name: Handle Versioning
+      - name: Detect Change Type and Bump Version
         id: versioning
         run: |
-          # Create version.prop if it doesn't exist
-          if [ ! -f version.prop ]; then
-            echo "1.0.0" > version.prop
-            echo "VERSION=1.0.0" >> $GITHUB_OUTPUT
-          else
-            # Read current version and bump the last digit (Patch)
-            CURRENT_VER=$(cat version.prop)
-            BASE_VER=$(echo $CURRENT_VER | cut -d. -f1-2)
-            PATCH=$(echo $CURRENT_VER | cut -d. -f3)
-            NEW_VER="$BASE_VER.$((PATCH + 1))"
-            echo $NEW_VER > version.prop
-            echo "VERSION=$NEW_VER" >> $GITHUB_OUTPUT
+          # 1. Get list of changed files
+          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
+          echo "Changed files: $CHANGED_FILES"
+
+          # 2. Determine bump type
+          # Default to patch
+          BUMP_TYPE="patch"
+
+          # If any core files changed, it's a 'minor' bump (middle digit)
+          if echo "$CHANGED_FILES" | grep -E '(\.sh$|\.apk$|^system/|^module\.prop)'; then
+            BUMP_TYPE="minor"
+            echo "Core files detected. Triggering MINOR bump."
+          # If only meta files changed, it's a 'patch' bump (last digit)
+          elif echo "$CHANGED_FILES" | grep -E '(README\.md|banner\.png|^\.github/)'; then
+            BUMP_TYPE="patch"
+            echo "Meta files detected. Triggering PATCH bump."
           fi
+
+          # 3. Read current version from module.prop
+          CURRENT_VER=$(grep "version=" module.prop | cut -d= -f2)
+          IFS='.' read -r major minor patch <<< "$CURRENT_VER"
+
+          # 4. Calculate New Version
+          if [ "$BUMP_TYPE" == "minor" ]; then
+            NEW_VER="$major.$((minor + 1)).0"
+          else
+            NEW_VER="$major.$minor.$((patch + 1))"
+          fi
+
+          # 5. Update files
+          sed -i "s/^version=.*/version=$NEW_VER/" module.prop
+          echo "$NEW_VER" > version.prop
+          
+          echo "VERSION=$NEW_VER" >> $GITHUB_OUTPUT
+          echo "New Version: $NEW_VER"
 
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y zip
 
       - name: Build Module
-        run: make all
+        run: make all # Ensure your Makefile outputs a .zip file
 
       - name: Commit Version Bump
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add version.prop
-          git commit -m "chore: bump version to ${{ steps.versioning.outputs.VERSION }}" || echo "No changes to commit"
+          git add module.prop version.prop
+          git commit -m "chore: bump version to ${{ steps.versioning.outputs.VERSION }} [skip ci]" || echo "No changes to commit"
           git push
 
       - name: Create GitHub Release
