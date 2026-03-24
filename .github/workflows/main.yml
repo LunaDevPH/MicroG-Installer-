@@ -15,59 +15,59 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2 # Required to compare current commit with the previous one
+          fetch-depth: 2
 
-      - name: Detect Change Type and Bump Version
+      - name: Detect Change and Bump Version
         id: versioning
         run: |
-          # 1. Get list of changed files
-          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD)
-          echo "Changed files: $CHANGED_FILES"
-
-          # 2. Determine bump type
-          # Default to patch
+          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD || echo "first_run")
+          
           BUMP_TYPE="patch"
-
-          # If any core files changed, it's a 'minor' bump (middle digit)
           if echo "$CHANGED_FILES" | grep -E '(\.sh$|\.apk$|^system/|^module\.prop)'; then
             BUMP_TYPE="minor"
-            echo "Core files detected. Triggering MINOR bump."
-          # If only meta files changed, it's a 'patch' bump (last digit)
           elif echo "$CHANGED_FILES" | grep -E '(README\.md|banner\.png|^\.github/)'; then
             BUMP_TYPE="patch"
-            echo "Meta files detected. Triggering PATCH bump."
           fi
 
-          # 3. Read current version from module.prop
-          CURRENT_VER=$(grep "version=" module.prop | cut -d= -f2)
+          CURRENT_VER=$(grep "^version=" module.prop | cut -d= -f2 | tr -d ' ')
+          CURRENT_VCODE=$(grep "^versionCode=" module.prop | cut -d= -f2 | tr -d ' ')
+          
           IFS='.' read -r major minor patch <<< "$CURRENT_VER"
 
-          # 4. Calculate New Version
           if [ "$BUMP_TYPE" == "minor" ]; then
             NEW_VER="$major.$((minor + 1)).0"
           else
             NEW_VER="$major.$minor.$((patch + 1))"
           fi
+          NEW_VCODE=$((CURRENT_VCODE + 1))
 
-          # 5. Update files
           sed -i "s/^version=.*/version=$NEW_VER/" module.prop
-          echo "$NEW_VER" > version.prop
+          sed -i "s/^versionCode=.*/versionCode=$NEW_VCODE/" module.prop
           
+          cat <<EOF > update.json
+          {
+            "version": "v$NEW_VER",
+            "versionCode": $NEW_VCODE,
+            "zipUrl": "https://github.com/${{ github.repository }}/releases/download/v$NEW_VER/MicroG-Installer.zip",
+            "changelog": "https://raw.githubusercontent.com/${{ github.repository }}/main/README.md"
+          }
+EOF
+
           echo "VERSION=$NEW_VER" >> $GITHUB_OUTPUT
-          echo "New Version: $NEW_VER"
+          echo "VCODE=$NEW_VCODE" >> $GITHUB_OUTPUT
 
       - name: Install dependencies
         run: sudo apt-get update && sudo apt-get install -y zip
 
       - name: Build Module
-        run: make all # Ensure your Makefile outputs a .zip file
+        run: make all
 
-      - name: Commit Version Bump
+      - name: Commit Changes
         run: |
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
-          git add module.prop version.prop
-          git commit -m "chore: bump version to ${{ steps.versioning.outputs.VERSION }} [skip ci]" || echo "No changes to commit"
+          git add module.prop update.json
+          git commit -m "chore: release v${{ steps.versioning.outputs.VERSION }} [skip ci]" || echo "No changes"
           git push
 
       - name: Create GitHub Release
@@ -76,6 +76,6 @@ jobs:
           tag_name: v${{ steps.versioning.outputs.VERSION }}
           files: "*.zip"
           generate_release_notes: true
-          body: "Automated build for version ${{ steps.versioning.outputs.VERSION }}"
+          body: "Automated build: v${{ steps.versioning.outputs.VERSION }} (Code: ${{ steps.versioning.outputs.VCODE }})"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
