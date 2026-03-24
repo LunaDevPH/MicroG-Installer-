@@ -1,9 +1,16 @@
 name: Run Build And Package Release
 
 on:
-  push:
-    branches: [ "main" ]
   workflow_dispatch:
+    inputs:
+      bump_type:
+        description: 'Select version bump type'
+        required: true
+        default: 'minor'
+        type: choice
+        options:
+          - patch
+          - minor
 
 jobs:
   build:
@@ -15,20 +22,13 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
-      - name: Detect Change and Bump Version
+      - name: Bump Version
         id: versioning
         run: |
-          CHANGED_FILES=$(git diff --name-only HEAD^ HEAD || echo "first_run")
+          BUMP_TYPE="${{ github.event.inputs.bump_type }}"
           
-          BUMP_TYPE="patch"
-          if echo "$CHANGED_FILES" | grep -E '(\.sh$|\.apk$|^system/|^module\.prop)'; then
-            BUMP_TYPE="minor"
-          elif echo "$CHANGED_FILES" | grep -E '(README\.md|banner\.png|^\.github/)'; then
-            BUMP_TYPE="patch"
-          fi
-
           CURRENT_VER=$(grep "^version=" module.prop | cut -d= -f2 | tr -d ' ')
           CURRENT_VCODE=$(grep "^versionCode=" module.prop | cut -d= -f2 | tr -d ' ')
           
@@ -67,7 +67,7 @@ jobs:
           git config --local user.email "action@github.com"
           git config --local user.name "GitHub Action"
           git add module.prop update.json
-          git commit -m "chore: release v${{ steps.versioning.outputs.VERSION }} [skip ci]" || echo "No changes"
+          git commit -m "chore: manual release v${{ steps.versioning.outputs.VERSION }} [skip ci]" || echo "No changes"
           git push
 
       - name: Create GitHub Release
@@ -76,6 +76,6 @@ jobs:
           tag_name: v${{ steps.versioning.outputs.VERSION }}
           files: "*.zip"
           generate_release_notes: true
-          body: "Automated build: v${{ steps.versioning.outputs.VERSION }} (Code: ${{ steps.versioning.outputs.VCODE }})"
+          body: "Manual build: v${{ steps.versioning.outputs.VERSION }} (Code: ${{ steps.versioning.outputs.VCODE }})"
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
